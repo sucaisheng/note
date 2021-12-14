@@ -1,0 +1,65 @@
+1、先配置jdk（要求最低1.7）：
+	vi /etc/profile
+	在文件结尾添加：
+	export JAVA_HOME=JDK的安装路径
+	export PATH=$PATH:$JAVA_HOME/bin
+	执行：
+	source /etc/profile
+2、去Apache官网下载Hadoop，之后上传到服务器，解压到/usr/local/目录下
+3、配置Hadoop的环境变量：
+	vi /etc/profile
+在文件末尾添加：
+	export HADOOP_HOME=/usr/local/hadoop 
+	export HADOOP_MAPRED_HOME=$HADOOP_HOME 
+	export HADOOP_COMMON_HOME=$HADOOP_HOME 
+	export HADOOP_HDFS_HOME=$HADOOP_HOME 
+	export YARN_HOME=$HADOOP_HOME 
+	export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native 
+	export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin 
+	export HADOOP_INSTALL=$HADOOP_HOME 
+	执行：
+	source /etc/profile
+4、配置Hadoop启动的一些参数
+	cd $HADOOP_HOME/etc/hadoop
+5、修改hadoop-env.sh
+	export JAVA_HOME=JDK安装路径
+6、修改core-site.xml
+	在<configuration></configuration>间添加
+	<property>
+      <name>fs.default.name </name>
+      <value> hdfs://localhost:9000 </value> 
+   </property>
+7、修改hdfs-site.xml
+	在<configuration></configuration>间添加
+	<property>
+      <name>dfs.replication</name>
+      <value>1</value>
+   </property>
+    
+   <property>
+      <name>dfs.name.dir</name>
+      <value>file:///home/hadoop/hadoopinfra/hdfs/namenode </value>
+   </property>
+    
+   <property>
+      <name>dfs.data.dir</name> 
+      <value>file:///home/hadoop/hadoopinfra/hdfs/datanode </value> 
+   </property>
+8、修改yarn-site.xml
+	在<configuration></configuration>间添加
+	<property>
+      <name>yarn.nodemanager.aux-services</name>
+      <value>mapreduce_shuffle</value> 
+   </property>
+9、修改mapred-site.xml
+	在<configuration></configuration>间添加
+	 <property> 
+      <name>mapreduce.framework.name</name>
+      <value>yarn</value>
+   </property>
+10、执行hdfs namenode -format
+11、start-dfs.sh
+12、start-yarn.sh
+注意：（1）在3以上的版本中不会默认开启50070端口，开启需要在配置文件里面指定
+	  （2）查看如果DataNode没有成功启动需要将/home/hadoop/hadoopinfra/hdfs/文件夹下面的内容删除，重新执行hdfs namenode -format
+
