@@ -1,0 +1,131 @@
+0、在安装好伪分布式Hadoop的基础上安装hive
+1、安装MySQL
+	（0）卸载原先的MySQL
+		rpm -qa | grep mysql
+		rpm -e --nodeps mysql-libs-5.1.*
+		卸载之后，记得：
+		find / -name mysql
+		删除查询出来的所有东西
+		rpm -qa|grep mariad
+		rpm -e --nodeps mariadb-libs-5.5.60-1.el7_5.x86_64(删除查询出来的mariadb)
+	（1）下载MySQL的rpm包上传到服务器
+	（2）按照如下顺序安装
+		rpm -ivh mysql-community-common-5.7.29-1.el7.x86_64.rpm
+		rpm -ivh mysql-community-libs-5.7.29-1.el7.x86_64.rpm
+		rpm -ivh mysql-community-client-5.7.29-1.el7.x86_64.rpm
+		rpm -ivh mysql-community-server-5.7.29-1.el7.x86_64.rpm
+	（3）编辑配置文件
+		vi /etc/my.cnf
+		添加这三行：
+			skip-grant-tables 跳过登录验证
+			character_set_server=utf8 设置默认字符集
+			init_connect='SET NAMES utf8' 设置默认字符集
+	（4）systemctl enable mysqld 设置开机启动
+		 systemctl start mysqld  启动MySQL
+	(5)创建hive数据库
+		create database hive;
+		创建hive用户，并赋予访问hive数据库的权限
+		use hive;
+		grant all privileges on hive.* to 'hive'@'localhost' identified by '密码';
+		flush privileges;
+		set global binlog_format=MIXED;
+	（6）下载并解压hive
+	（7）添加hive的环境变量：vi /etc/profile
+		export HIVE_HOME=hive存放的路径
+		export PATH=$PATH:$HIVE_HOME/bin
+		使用source /etc/profile让其生效
+	（8）下载MySQL JDBC jar包
+		解压：tar xvzf mysql-connector-java-5.1.37.tar.gz
+		拷贝：cp mysql-connector-java-5.1.37/mysql-connector-java-5.1.37-bin.jar $HIVE_HOME/lib
+	（9）修改hive的配置文件hive-site.xml
+			<?xml version="1.0" encoding="UTF-8"?>
+			<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+			<configuration>
+				<property>
+				  <name>hive.server2.thrift.port</name>
+				  <value>10000</value>
+				</property>
+
+				<property>
+				  <name>hive.server2.thrift.bind.host</name>
+				  <value>hw001</value>
+				</property>
+
+				<property>
+				  <name>hive.server2.authentication</name>
+				  <value>NONE</value>
+				  <description>
+					Client authentication types.
+					   NONE: no authentication check
+					   LDAP: LDAP/AD based authentication
+					   KERBEROS: Kerberos/GSSAPI authentication
+					   CUSTOM: Custom authentication provider
+							   (Use with property hive.server2.custom.authentication.class)
+				  </description>
+				</property>
+
+				<property>
+				  <name>hive.server2.enable.doAs</name>
+				  <value>true</value>
+				</property>
+
+				<property>
+				  <name>javax.jdo.option.ConnectionURL</name>
+				  <value>jdbc:mysql://localhost:3306/hive?createDatabaseIfNotExist=true</value>
+				  <description>JDBC connect string for a JDBC metastore</description>
+				</property>
+
+				<property>
+				  <name>javax.jdo.option.ConnectionDriverName</name>
+				  <value>com.mysql.jdbc.Driver</value>
+				  <description>Driver class name for a JDBC metastore</description>
+				</property>
+
+				<property>
+				  <name>javax.jdo.option.ConnectionUserName</name>
+				  <value>hive</value>
+				  <description>username to use against metastore database</description>
+				</property>
+
+				<property>
+				  <name>javax.jdo.option.ConnectionPassword</name>
+				  <value>hive</value>
+				  <description>password to use against metastore database</description>
+				</property>
+				增加
+				<property>
+					<name>system:java.io.tmpdir</name>
+					<value>/data/hive-2.3.9/logs/iotmp</value>
+					<description/>
+				</property>
+				修改hive.exec.local.scratchdir
+				<property>
+					<name>hive.exec.local.scratchdir</name>
+					<value>${java.io.tmpdir}/${user.name}</value>
+					<description>Local scratch space for Hive jobs</description>
+				</property>
+			</configuration>
+	(10)在启动Hive时，有可能会出现Hive metastore database is not initialized的错误,如果出现执行
+		schematool -dbType mysql -initSchema
+	(11)启动hive
+		./bin/hive
+   （12）启动hive server
+			nohup hive --server hiveserver2 &
+	(13)启动客户端
+		beeline
+		!connect jdbc:hive2://node1:10000/数据库名
+	(14)编辑hive-site.xml
+		hive.server2.thrift.client.user（设置登录的用户名，该用户需要对/tmp/hive有执行权，不然会出现报错）
+		hive.server2.thrift.client.password(设置登录密码)
+	（15）编辑hadoop的core-site.xml	添加允许登录的主机
+		<property>
+			<name>hadoop.proxyuser.root.hosts</name>（root为配置的登录用户名）
+			<value>*</value>
+		</property>
+		<property>
+			<name>hadoop.proxyuser.root.groups</name>（root为配置的登录用户名）
+			<value>*</value>
+		</property>
+	(16)（注：如果启动出现错误或者执行SQL语句比较慢时去查看hive.log日志文件，查看错误原因）
+
